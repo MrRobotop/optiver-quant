@@ -1,37 +1,61 @@
 # Optiver Quant Analytics Engine & Signal Platform
 
-A high-throughput, low-latency market data analytics and algorithmic trading platform designed for real-time quantitative research and signal generation. This platform specializes in **Order Book Imbalance (OBI)** and **Micro-price** statistical arbitrage.
+A high-throughput, low-latency market data analytics and algorithmic trading platform designed for real-time quantitative research and signal generation. This platform specializes in capturing alpha through **Order Book Imbalance (OBI)** and **Micro-price** statistical arbitrage.
 
-![Dashboard Preview](https://via.placeholder.com/1000x500.png?text=Dashboard+UI+Preview+Placeholder) 
+![Dashboard Preview] 
 *Note: Run the tool and replace this with your own screenshot!*
 
 ---
 
-## 🔬 Theoretical Framework
+## 🎯 Problem Statement & Core Objective
 
-This platform is built upon two core pillars of High-Frequency Trading (HFT) market microstructure:
+In High-Frequency Trading (HFT), the standard "Mid-price" ($\frac{Bid + Ask}{2}$) is often a lagging indicator. It fails to account for the **depth** of the market and the **liquidity skew** between buyers and sellers. Processing these order book events at scale requires massive computational overhead and low-latency infrastructure.
+
+**The Solution:** This platform provides an end-to-end, sub-millisecond pipeline that:
+1.  **Ingests** massive streams of L2 market events.
+2.  **Calculates** high-fidelity features (Micro-price/OBI) using vectorized memory engines.
+3.  **Executes** statistical models to identify temporary market inefficiencies.
+4.  **Persists** data into industrial-grade Delta Lakes for continuous strategy refinement.
+
+---
+
+## 🔬 Theoretical Framework & Math
+
+The platform is engineered around the physics of market microstructure:
 
 ### 1. Order Book Imbalance (OBI)
-OBI measures the relative buying vs. selling pressure at the top of the order book.
-- **Formula:** $OBI = \frac{Size_{bid} - Size_{ask}}{Size_{bid} + Size_{ask}}$
-- **Purpose:** A high positive OBI suggests a high probability of a short-term price increase as buyers are aggressive, while a negative OBI suggests downward pressure.
+OBI quantifies the relative buying vs. selling pressure at the best bid and offer (BBO). It is a predictor of short-term price direction.
+- **Formula:** 
+$$OBI = \frac{Size_{bid} - Size_{ask}}{Size_{bid} + Size_{ask}}$$
+- **Range:** $[-1, 1]$.
+    - $OBI \to 1$: Heavy buying pressure; high probability of an upward "tick".
+    - $OBI \to -1$: Heavy selling pressure; high probability of a downward "tick".
 
 ### 2. Micro-price
-Unlike the standard "Mid-price", the Micro-price accounts for the volume (size) of orders at the best bid and ask.
-- **Formula:** $P_{micro} = \frac{Price_{bid} \times Size_{ask} + Price_{ask} \times Size_{bid}}{Size_{bid} + Size_{ask}}$
-- **Purpose:** The Micro-price provides a more accurate "fair" value of the asset. It is more responsive to order book shifts and is often a leading indicator of where the mid-price will settle next.
+The Micro-price is a "fair value" estimate that incorporates order sizes, making it less susceptible to "bid-ask bounce" and more reflective of true market intent.
+- **Formula:** 
+$$P_{micro} = \frac{Price_{bid} \times Size_{ask} + Price_{ask} \times Size_{bid}}{Size_{bid} + Size_{ask}}$$
+- **Key Insight:** When the bid size is significantly larger than the ask size, the Micro-price moves closer to the ask price, signaling an imminent upward shift in the mid-price.
+
+---
+
+## 🏆 Key Accomplishments
+
+-   **Zero-Copy Pipeline:** Utilizes **PyArrow** and **Protobuf** to move data from Kafka to the analysis engine with minimal CPU overhead.
+-   **Vectorized Feature Engineering:** Leverages the **Polars** OLAP engine to conduct 100ms windowed aggregations on tens of thousands of messages per second.
+-   **Industrial Storage:** Integrated **Delta Lake** (Hive-partitioned) for immutable, time-travel-capable historical data storage.
+-   **Integrated Research Lab:** A custom-built UI and API that allows for real-time backtesting and **Auto-Refinement** of strategy parameters via grid search.
+-   **High-Frequency Simulation:** Built a high-performance **Geometric Brownian Motion (GBM)** simulator capable of generating 50,000+ ticks/sec to stress-test the stack.
 
 ---
 
 ## 🏗️ System Architecture
 
-The platform operates as a distributed microservices ecosystem:
-
-1.  **Market Producer:** An extensible service that streams L2 data into Kafka. It ships with a `MarketSimulator` that uses Geometric Brownian Motion (GBM) to simulate realistic price action.
-2.  **Real-Time Engine:** Subscribes to Kafka, maps Protobuf payloads to PyArrow blobs, and conducts vectorized feature engineering (OBI/Micro-price) using the `Polars` memory engine with 100ms bucketing.
-3.  **Delta Lake Storage:** Provides an immutable, Hive-partitioned historical record of all processed quant features for backtesting and auditing.
-4.  **Strategy Research Lab (UI):** A dedicated interface to trigger backtests and auto-refine strategy parameters natively in the browser.
-5.  **React Dashboard:** A Vite/TypeScript frontend for real-time visualization of spreads, OBI, and generated trade signals.
+1.  **Market Producer:** Streams L2 data into Kafka. Includes a GBM-based `MarketSimulator`.
+2.  **Real-Time Engine:** Subscribes to Kafka, maps payloads to PyArrow, and conducts vectorized feature engineering.
+3.  **Delta Lake Storage:** Immutable Hive-partitioned records for auditing and backtesting.
+4.  **Strategy Research Lab (UI):** Direct browser-based control for strategy optimization and backtesting.
+5.  **React Dashboard:** Real-time visualization of spreads, OBI, and generated trade signals.
 
 ---
 
@@ -39,81 +63,41 @@ The platform operates as a distributed microservices ecosystem:
 
 ### Prerequisites
 - Python 3.11+
-- [Poetry](https://python-poetry.org/) (for dependency management)
+- [Poetry](https://python-poetry.org/)
 - Docker & Docker Compose
 
-### Fast Launch (Simulated Mode)
+### Fast Launch
 ```bash
-# Bring up the entire stack (Kafka, Redpanda, Engine, Producer, API, Frontend, Prometheus)
+# Start Kafka, Redpanda, Engine, Producer, API, Frontend, and Prometheus
 docker-compose up -d --build
 
-# Access the Real-Time Dashboard & Research Lab
-# http://localhost:5173
-
-# Monitor System Stats via Prometheus
-# http://localhost:9090
+# Real-Time Dashboard & Research Lab: http://localhost:5173
+# Prometheus Metrics: http://localhost:9090
 ```
 
 ---
 
 ## 🧪 Backtesting & Strategy Refinement
 
-The platform includes a **Strategy Research Lab** integrated directly into the UI, powered by a dedicated `BacktestingEngine` and `StrategyRefiner`.
+The platform includes a **Strategy Research Lab** integrated into the UI, powered by a dedicated `BacktestingEngine`.
 
 ### Manual Backtesting
-Select a ticker in the dashboard and use the **Strategy Research Lab** panel to:
-1. Adjust the **OBI Threshold** slider.
-2. Click **BACKTEST** to run your strategy against all historical data in Delta Lake.
-3. Instantly view **Total PNL**, **Win Rate**, and **Trade Count**.
+Adjust the **OBI Threshold** slider in the UI to see how your strategy would have performed on historical data. View **Total PNL**, **Win Rate**, and **Trade Count** instantly.
 
-### Auto-Refining Strategies (For AI Agents)
-The `AUTO-REFINE` feature performs an automated grid search across parameter spaces (e.g., OBI thresholds from 0.1 to 0.9) to find the configuration that maximizes performance metrics.
-
-```bash
-# CLI usage is also supported:
-python -m src.backtester
-python -m src.refiner
-```
-
----
-
-## 🛠️ Strategy SDK (For Quants)
-
-We have engineered an extensible SDK so quants can focus on math, not infrastructure.
-
-### Writing a Custom Strategy
-1.  Navigate to `src/strategy/`.
-2.  Extend `BaseStrategy` and implement the `analyze(self, df)` method.
-3.  `df` is a 100ms-bucketed `polars.DataFrame` containing pre-calculated `obi_avg` and `micro_price_avg`.
-
-```python
-import polars as pl
-from .base import BaseStrategy
-
-class MyAlphaStrategy(BaseStrategy):
-    def analyze(self, df: pl.DataFrame):
-        # Your statistical arbitrage logic here
-        # Return a list of TradeSignal() objects
-        pass
-```
-
-4.  Register your strategy in `src/engine.py`.
+### Auto-Refining Strategies
+The `AUTO-REFINE` feature allows AI agents or researchers to perform an automated grid search to find the optimal threshold that maximizes signal density and PNL.
 
 ---
 
 ## 🔌 Live Broker Integration
 
-To use this tool with real live data, replace the `MarketSimulator` with a broker-specific client.
-
-### How to connect your own API Key:
-1.  **Create a new Producer:** Create `src/broker_producer.py`.
-2.  **Map to Schema:** Convert the broker's WebSocket message (e.g., from Alpaca, IBKR, or Binance) into our `MarketData` protobuf schema.
-3.  **Update `docker-compose.yml`:** Point the `producer` service to your new script and inject your API keys as environment variables.
+To use live data, replace `MarketSimulator` with a broker-specific client (e.g., Alpaca, IBKR, or Binance).
+1. Create `src/broker_producer.py`.
+2. Map the broker's WebSocket message to our `MarketData` protobuf schema.
+3. Update `docker-compose.yml` to point to the new producer.
 
 ---
 
-## 📊 Monitoring & Performance
-The system utilizes robust exponential backoff routines to tolerate connection jitter.
-- **Pipeline Latency:** Tracked per-message from producer to signal.
-- **Throughput:** Capable of processing >50,000 events/sec on a single node.
-- **Metrics:** Native Prometheus export on port `:8002/metrics`.
+## 👨‍💻 Author
+**Rishabh Patil**
+Quantitative Developer & Systems Architect
