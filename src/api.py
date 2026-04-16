@@ -1,10 +1,13 @@
 import os
 import asyncio
 import logging
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Query
 from fastapi.middleware.cors import CORSMiddleware
 from confluent_kafka import Consumer
 from schema.market_data_pb2 import MarketData, TradeSignal
+from src.backtester import BacktestingEngine
+from src.refiner import StrategyRefiner
+from src.strategy import ObiStrategy
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +23,22 @@ app.add_middleware(
 )
 
 KAFKA_BROKER = os.environ.get("KAFKA_BROKER", "localhost:19092")
+
+@app.get("/backtest")
+async def run_backtest(symbol: str = "TICK0", threshold: float = 0.8):
+    """Triggers a backtest for a specific symbol and threshold."""
+    engine = BacktestingEngine()
+    data = engine.load_data(symbol=symbol)
+    strat = ObiStrategy(threshold=threshold)
+    performance = engine.run_strategy(strat, data)
+    return performance
+
+@app.get("/refine")
+async def run_refinement(symbol: str = "TICK0"):
+    """Triggers parameter refinement for a specific symbol."""
+    refiner = StrategyRefiner()
+    best_threshold = refiner.optimize_obi(symbol)
+    return {"best_threshold": round(best_threshold, 2), "symbol": symbol}
 
 async def consume_market_data(queue: asyncio.Queue):
     conf = {
@@ -43,7 +62,6 @@ async def consume_market_data(queue: asyncio.Queue):
         md.ParseFromString(msg.value())
         
         now = time.time()
-        # Throttle each individual symbol to 150ms UI updates
         if now - last_sent.get(md.symbol, 0) > 0.15:
             last_sent[md.symbol] = now
             

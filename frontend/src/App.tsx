@@ -21,6 +21,13 @@ interface TradeSignal {
   strategy: string;
 }
 
+interface BacktestResult {
+  total_pnl: number;
+  trade_count: number;
+  win_rate: number;
+  total_signals: number;
+}
+
 function Sparkline({ data }: { data: number[] }) {
   if (!data || data.length < 2) return null;
   const min = Math.min(...data);
@@ -69,13 +76,9 @@ function MainChart({ symbol, data }: { symbol: string | null, data: MarketData[]
       <div className="panel-title">{symbol} LIVE CHART (GBM DRIFT)</div>
       <div className="chart-container">
         <svg viewBox={`0 -20 ${width} ${height + 40}`} className="chart-svg" preserveAspectRatio="none">
-          {/* Axis lines */}
           <line x1="0" y1={height} x2={width} y2={height} className="chart-axis" />
           <line x1="0" y1="0" x2="0" y2={height} className="chart-axis" />
-          
           <polyline points={points} className="chart-line" />
-          
-          {/* Current dot */}
           {points && (
              <circle 
                 cx={width} 
@@ -91,6 +94,92 @@ function MainChart({ symbol, data }: { symbol: string | null, data: MarketData[]
            </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BacktestPanel({ symbol }: { symbol: string | null }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<BacktestResult | null>(null);
+  const [threshold, setThreshold] = useState(0.8);
+
+  const runBacktest = async () => {
+    if (!symbol) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:8080/backtest?symbol=${symbol}&threshold=${threshold}`);
+      const data = await res.json();
+      setResult(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runRefine = async () => {
+    if (!symbol) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:8080/refine?symbol=${symbol}`);
+      const data = await res.json();
+      setThreshold(data.best_threshold);
+      // Auto run backtest with new threshold
+      const res2 = await fetch(`http://localhost:8080/backtest?symbol=${symbol}&threshold=${data.best_threshold}`);
+      const data2 = await res2.json();
+      setResult(data2);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="panel" style={{ marginTop: '20px' }}>
+      <div className="panel-title">Strategy Research Lab</div>
+      {!symbol ? (
+        <div style={{ color: 'var(--text-dim)' }}>Select a symbol to start backtesting</div>
+      ) : (
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: '8px' }}>OBI THRESHOLD</div>
+            <input 
+              type="range" min="0.1" max="0.9" step="0.05" 
+              value={threshold} 
+              onChange={(e) => setThreshold(parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+            <div style={{ textAlign: 'center', fontWeight: 700, marginTop: '5px' }}>{threshold.toFixed(2)}</div>
+          </div>
+          
+          <button onClick={runBacktest} disabled={loading} className="action-btn">
+            {loading ? 'RUNNING...' : 'BACKTEST'}
+          </button>
+          <button onClick={runRefine} disabled={loading} className="action-btn refine">
+            {loading ? 'REFINING...' : 'AUTO-REFINE'}
+          </button>
+
+          {result && (
+            <div style={{ display: 'flex', gap: '20px', marginLeft: '20px', borderLeft: '1px solid var(--border)', paddingLeft: '20px' }}>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>TOTAL PNL</div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: result.total_pnl >= 0 ? '#00ff88' : '#ff4d4d' }}>
+                  ${result.total_pnl.toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>WIN RATE</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{(result.win_rate * 100).toFixed(0)}%</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>TRADES</div>
+                <div style={{ fontSize: '18px', fontWeight: 800 }}>{result.trade_count}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -111,7 +200,7 @@ function App() {
         setHistory(prev => {
           const current = prev[data.symbol] || [];
           const next = [...current, data];
-          if (next.length > 60) next.shift(); // retain 60 window points smoothly
+          if (next.length > 60) next.shift();
           return { ...prev, [data.symbol]: next };
         });
       }
@@ -120,7 +209,6 @@ function App() {
     return () => ws.close();
   }, []);
 
-  // Top active symbols prioritizing higher frequencies natively
   const activeSymbols = Object.keys(history).slice(0, 15);
 
   return (
@@ -143,8 +231,7 @@ function App() {
           <div className="meter-list">
             {activeSymbols.map(sym => {
               const hist = history[sym];
-              const md = hist[hist.length - 1]; // latest
-              
+              const md = hist[hist.length - 1];
               const obi = (md.bid_size - md.ask_size) / (md.bid_size + md.ask_size);
               const buyWidth = obi > 0 ? obi * 50 : 0;
               const sellWidth = obi < 0 ? Math.abs(obi) * 50 : 0;
@@ -164,7 +251,6 @@ function App() {
                           ${midPrice.toFixed(2)}
                         </div>
                     </div>
-                    {/* Sparkline integration */}
                     <Sparkline data={prices} />
                   </div>
                   <div className="meter-wrapper">
@@ -179,8 +265,10 @@ function App() {
           </div>
         </div>
         
-        {/* Center Panel - Main Interactive Chart */}
-        <MainChart symbol={selectedSymbol} data={selectedSymbol ? history[selectedSymbol] : []} />
+        <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 2 }}>
+            <MainChart symbol={selectedSymbol} data={selectedSymbol ? history[selectedSymbol] : []} />
+            <BacktestPanel symbol={selectedSymbol} />
+        </div>
         
         <div className="panel" style={{ flexGrow: 1 }}>
           <div className="panel-title">Strategy Engine Feed</div>

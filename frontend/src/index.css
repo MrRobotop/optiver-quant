@@ -206,3 +206,55 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+.action-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 1px;
+}
+
+.action-btn:hover {
+  filter: brightness(1.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 240, 255, 0.4);
+}
+
+.action-btn:disabled {
+  background: var(--text-dim);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.action-btn.refine {
+  background: #bb86fc;
+}
+
+.action-btn.refine:hover {
+  box-shadow: 0 4px 12px rgba(187, 134, 252, 0.4);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  background: var(--border);
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}

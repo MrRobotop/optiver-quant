@@ -2,6 +2,9 @@
 
 A high-throughput, low-latency market data analytics and algorithmic trading platform designed for real-time quantitative research and signal generation. This platform specializes in **Order Book Imbalance (OBI)** and **Micro-price** statistical arbitrage.
 
+![Dashboard Preview](https://via.placeholder.com/1000x500.png?text=Dashboard+UI+Preview+Placeholder) 
+*Note: Run the tool and replace this with your own screenshot!*
+
 ---
 
 ## 🔬 Theoretical Framework
@@ -27,7 +30,8 @@ The platform operates as a distributed microservices ecosystem:
 1.  **Market Producer:** An extensible service that streams L2 data into Kafka. It ships with a `MarketSimulator` that uses Geometric Brownian Motion (GBM) to simulate realistic price action.
 2.  **Real-Time Engine:** Subscribes to Kafka, maps Protobuf payloads to PyArrow blobs, and conducts vectorized feature engineering (OBI/Micro-price) using the `Polars` memory engine with 100ms bucketing.
 3.  **Delta Lake Storage:** Provides an immutable, Hive-partitioned historical record of all processed quant features for backtesting and auditing.
-4.  **React Dashboard:** A Vite/TypeScript frontend for real-time visualization of spreads, OBI, and generated trade signals.
+4.  **Strategy Research Lab (UI):** A dedicated interface to trigger backtests and auto-refine strategy parameters natively in the browser.
+5.  **React Dashboard:** A Vite/TypeScript frontend for real-time visualization of spreads, OBI, and generated trade signals.
 
 ---
 
@@ -40,57 +44,36 @@ The platform operates as a distributed microservices ecosystem:
 
 ### Fast Launch (Simulated Mode)
 ```bash
-# Bring up the entire stack (Kafka, Redpanda, Engine, Producer, Frontend, Prometheus)
+# Bring up the entire stack (Kafka, Redpanda, Engine, Producer, API, Frontend, Prometheus)
 docker-compose up -d --build
 
-# Access the Real-Time Dashboard
+# Access the Real-Time Dashboard & Research Lab
 # http://localhost:5173
 
 # Monitor System Stats via Prometheus
-# http://localhost:8002/metrics
+# http://localhost:9090
 ```
 
 ---
 
-## 🔌 Live Broker Integration
+## 🧪 Backtesting & Strategy Refinement
 
-To use this tool with real live data, you must replace the `MarketSimulator` with a broker-specific client.
+The platform includes a **Strategy Research Lab** integrated directly into the UI, powered by a dedicated `BacktestingEngine` and `StrategyRefiner`.
 
-### How to connect your own API Key:
+### Manual Backtesting
+Select a ticker in the dashboard and use the **Strategy Research Lab** panel to:
+1. Adjust the **OBI Threshold** slider.
+2. Click **BACKTEST** to run your strategy against all historical data in Delta Lake.
+3. Instantly view **Total PNL**, **Win Rate**, and **Trade Count**.
 
-1.  **Choose your Broker:** Most quants use **Alpaca**, **Interactive Brokers (IBKR)**, or **Binance**.
-2.  **Create a new Producer:** Create `src/broker_producer.py`.
-3.  **Map to Schema:** Convert the broker's WebSocket message format into our `MarketData` protobuf schema.
+### Auto-Refining Strategies (For AI Agents)
+The `AUTO-REFINE` feature performs an automated grid search across parameter spaces (e.g., OBI thresholds from 0.1 to 0.9) to find the configuration that maximizes performance metrics.
 
-**Example (Conceptual Alpaca implementation):**
-```python
-import os
-from alpaca.data.live import StockDataStream
-from schema.market_data_pb2 import MarketData
-
-# Load your API Keys
-api_key = os.environ.get("ALPACA_KEY")
-secret_key = os.environ.get("ALPACA_SECRET")
-
-stream = StockDataStream(api_key, secret_key)
-
-async def quote_handler(data):
-    md = MarketData()
-    md.timestamp_ns = data.timestamp.value
-    md.symbol = data.symbol
-    md.bid_price = data.bid_price
-    md.ask_price = data.ask_price
-    md.bid_size = data.bid_size
-    md.ask_size = data.ask_size
-    
-    # Push to Kafka (topic: market-events)
-    kafka_producer.produce("market-events", md.SerializeToString())
-
-stream.subscribe_quotes(quote_handler, "AAPL", "MSFT", "TSLA")
-stream.run()
+```bash
+# CLI usage is also supported:
+python -m src.backtester
+python -m src.refiner
 ```
-
-4.  **Update `docker-compose.yml`:** Point the `producer` service to your new script and inject your API keys as environment variables.
 
 ---
 
@@ -118,45 +101,14 @@ class MyAlphaStrategy(BaseStrategy):
 
 ---
 
-## 🧪 Backtesting & Strategy Refinement
+## 🔌 Live Broker Integration
 
-The platform includes a dedicated `BacktestingEngine` and `StrategyRefiner` to allow users (and AI agents) to validate strategies against historical data before going live.
+To use this tool with real live data, replace the `MarketSimulator` with a broker-specific client.
 
-### Running a Backtest
-Historical data is automatically loaded from the Delta Lake storage. The engine simulates the flow of time by feeding data to your strategy in chronological order.
-
-```bash
-# Run the built-in backtester
-python -m src.backtester
-
-# Output Example:
-# INFO:__main__:Loading historical data from storage/delta_lake...
-# INFO:__main__:Running backtest for strategy: ObiStrategy
-# Threshold: 0.5 | Signals: 808
-# Threshold: 0.7 | Signals: 224
-# Threshold: 0.9 | Signals: 43
-```
-
-### Auto-Refining Strategies (For AI Agents)
-The `StrategyRefiner` allows for automated parameter optimization. For example, it can perform a grid search to find the OBI threshold that maximizes signal generation or theoretical PNL.
-
-```bash
-# Run the strategy refiner
-python -m src.refiner
-
-# Output Example:
-# INFO:__main__:Refining OBI Strategy for TICK0...
-# INFO:__main__:Tested Threshold 0.10 -> 15961 signals
-# INFO:__main__:Tested Threshold 0.50 -> 808 signals
-# INFO:__main__:Tested Threshold 0.90 -> 43 signals
-# INFO:__main__:Optimization complete. Best OBI threshold: 0.10
-```
-
-**Refinement Workflow:**
-1.  **Collect Data:** Run the system in simulation mode for a few hours to populate Delta Lake.
-2.  **Analyze:** Use `src/backtester.py` to see current performance.
-3.  **Optimize:** Run `src/refiner.py` to find optimal parameters.
-4.  **Deploy:** Update your strategy with the new parameters in `src/engine.py`.
+### How to connect your own API Key:
+1.  **Create a new Producer:** Create `src/broker_producer.py`.
+2.  **Map to Schema:** Convert the broker's WebSocket message (e.g., from Alpaca, IBKR, or Binance) into our `MarketData` protobuf schema.
+3.  **Update `docker-compose.yml`:** Point the `producer` service to your new script and inject your API keys as environment variables.
 
 ---
 

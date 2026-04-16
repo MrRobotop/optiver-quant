@@ -56,6 +56,8 @@ services:
     command: uvicorn src.api:app --host 0.0.0.0 --port 8080
     environment:
       - KAFKA_BROKER=redpanda:9092
+    volumes:
+      - ./storage:/app/storage
     ports:
       - "8080:8080"
     depends_on:
