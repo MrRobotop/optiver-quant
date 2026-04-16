@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package schema;
+
+message MarketData {
+    uint64 timestamp_ns = 1;
+    string symbol = 2;
+    double bid_price = 3;
+    double ask_price = 4;
+    double bid_size = 5;
+    double ask_size = 6;
+}
+
+message TradeSignal {
+    uint64 timestamp_ns = 1;
+    string symbol = 2;
+    string action = 3;
+    double size = 4;
+    double price = 5;
+    string strategy_name = 6;
+}

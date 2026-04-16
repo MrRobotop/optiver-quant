@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "optiver-quant"
+package-mode = false
+version = "0.1.0"
+description = "High-performance Python environment for quantitative trading"
+authors = ["Jarvis <jarvis@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+polars = "*"
+pyarrow = "*"
+confluent-kafka = "*"
+deltalake = "*"
+protobuf = "*"
+fastapi = "*"
+uvicorn = "*"
+websockets = "*"
+prometheus-client = "*"
+numpy = "*"
+
+[tool.poetry.group.dev.dependencies]
+grpcio-tools = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

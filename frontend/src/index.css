@@ -1,0 +1,208 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #050505;
+  --panel: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.07);
+  --text: #ffffff;
+  --text-dim: #888888;
+  --accent: #00f0ff;
+  --buy: #00ff88;
+  --sell: #ff3366;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(0, 240, 255, 0.05) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(255, 51, 102, 0.05) 0px, transparent 40%);
+}
+
+.dashboard-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.brand span {
+  color: var(--accent);
+}
+
+.system-status {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--buy);
+  box-shadow: 0 0 8px var(--buy);
+  margin-right: 6px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 340px;
+  gap: 20px;
+  padding: 20px;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.meter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.meter-card {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.meter-card:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+}
+
+.meter-card.active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.meter-wrapper {
+  background: rgba(0,0,0,0.6);
+  height: 6px;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.meter-fill {
+  height: 100%;
+  position: absolute;
+  top: 0;
+  transition: width 0.1s linear;
+}
+
+.meter-fill.buy { background: var(--buy); left: 50%; }
+.meter-fill.sell { background: var(--sell); right: 50%; }
+.meter-center {
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: rgba(255,255,255,0.3); z-index: 10;
+}
+
+.chart-container {
+  flex-grow: 1;
+  position: relative;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.4));
+}
+
+.signal-feed {
+  flex-grow: 1;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(0,0,0,0.4);
+  border-left: 3px solid;
+  border-radius: 6px;
+  animation: slideIn 0.3s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+.signal-action { font-weight: 800; font-size: 14px; }
+.signal-item.BUY { border-color: var(--buy); }
+.signal-item.SELL { border-color: var(--sell); }
+.signal-item.BUY .signal-action { color: var(--buy); }
+.signal-item.SELL .signal-action { color: var(--sell); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
